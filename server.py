@@ -8,6 +8,7 @@ import orderbook as ob
 import time
 import sys
 
+
 LOG = logging.getLogger(__name__)
 LOG_FILE = "market-making-game-server.log"
 CONSOLE_FORMATTER_PATTERN = "%(message)s'"
@@ -50,29 +51,42 @@ def setup_console_logging():
 
 
 def handle_quote(connection, bid_volume, bid, ask, ask_volume):
-    if connection not in connection2bid:
-        order_id = orderbook.add_order(connection, True, bid_volume, bid)
-        connection2bid[connection] = order_id
-    else:
-        order_id = connection2bid[connection]
-        orderbook.update_order(connection, order_id, bid_volume, bid)
+    if bid:
+        if connection not in connection2bid:
+            order_id = orderbook.add_order(connection, True, bid_volume, bid)
+            connection2bid[connection] = order_id
+        else:
+            order_id = connection2bid[connection]
+            orderbook.update_order(connection, order_id, bid_volume, bid)
 
-    if connection not in connection2ask:
-        order_id = orderbook.add_order(connection, False, ask_volume, ask)
-        connection2ask[connection] = order_id
-    else:
-        order_id = connection2ask[connection]
-        orderbook.update_order(connection, order_id, ask_volume, ask)
+    if ask:
+        if connection not in connection2ask:
+            order_id = orderbook.add_order(connection, False, ask_volume, ask)
+            connection2ask[connection] = order_id
+        else:
+            order_id = connection2ask[connection]
+            orderbook.update_order(connection, order_id, ask_volume, ask)
 
 
 def parse_quote(quote):
-    match = QUOTE_PATTERN.fullmatch(quote)
-    if not match:
-        LOG.error("Invalid quote: {}, expected <bid_volume>@<bid>|<ask>@<ask_volume>")
-        return None
+    quotes = quote.split(",")
+    bid_volume = 1
+    ask_volume = 1
+    bid = None
+    ask = None
+    for q in quotes:
+        side_and_price = q.split("@")
+        if len(side_and_price) == 2:
+            side, price = side_and_price
+            if side.strip().lower() in ["b", "buy"] and price.strip().isnumeric():
+                bid = int(price)
+            elif side.strip().lower() in ["s", "sell"] and price.strip().isnumeric():
+                ask = int(price)
+        else:
+            LOG.error("Invalid quote: expected <b(uy)/s(ell)>@<price>, e.g. b@12, sell@14")
+            return None
 
-    bid_volume, bid, ask, ask_volume = match.group(1, 2, 3, 4)
-    return int(bid_volume), int(bid), int(ask), int(ask_volume)
+    return bid_volume, bid, ask, ask_volume
 
 
 def handle_status_request(message):
@@ -81,6 +95,10 @@ def handle_status_request(message):
 
 def handle_help_request(message):
     return message.lower() in ["help", "h"]
+
+
+def handle_off_request(message):
+    return message.lower() in ["off"]
 
 
 def handle_instruction(connection, message):
@@ -124,6 +142,12 @@ def client_handler(connection):
             reply = str(orderbook) + orderbook.status(connection)
         elif handle_help_request(message):
             reply = HELP_MSG
+        elif handle_off_request(message):
+            if connection in connection2bid:
+                orderbook.cancel_order(connection, connection2bid[connection])
+            if connection in connection2ask:
+                orderbook.cancel_order(connection, connection2ask[connection])
+            reply = str(orderbook) + orderbook.status(connection)
         elif handle_instruction(connection, message):
             reply = str(orderbook) + orderbook.status(connection)
         else:
