@@ -1,15 +1,17 @@
 import socket
+import argparse
 import _thread
 import logging
 import random
 import re
 import orderbook as ob
 import time
-import os
+import sys
 
 LOG = logging.getLogger(__name__)
 LOG_FILE = "market-making-game-server.log"
-HOST = "172.27.17.158"
+CONSOLE_FORMATTER_PATTERN = "%(message)s'"
+HOST = "127.0.0.1"
 PORT = 1234
 DURATION_SECONDS = 60
 QUOTE_PATTERN = re.compile("([0-9]*)\@([0-9]*)\|([0-9]*)\@([0-9]*)")
@@ -39,8 +41,15 @@ orderbook = ob.OrderBook()
 market_closed = False
 
 
-def handle_quote(connection, bid_volume, bid, ask, ask_volume):
+def setup_console_logging():
+    console = logging.StreamHandler(sys.stdout)
+    console.setLevel(logging.INFO)
+    formatter = logging.Formatter(CONSOLE_FORMATTER_PATTERN)
+    console.setFormatter(formatter)
+    LOG.addHandler(console)
 
+
+def handle_quote(connection, bid_volume, bid, ask, ask_volume):
     if connection not in connection2bid:
         order_id = orderbook.add_order(connection, True, bid_volume, bid)
         connection2bid[connection] = order_id
@@ -133,7 +142,7 @@ def accept_connections(server_socket):
     _thread.start_new_thread(client_handler, (client, ))
 
 
-def start_server(host, port):
+def start_server(host, port, duration):
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         server_socket.bind((host, port))
@@ -142,7 +151,7 @@ def start_server(host, port):
     server_socket.listen()
     LOG.info("Listening for connections...")
 
-    schedule_game_end()
+    schedule_game_end(duration)
     while True:
         accept_connections(server_socket)
 
@@ -152,24 +161,24 @@ def get_result():
     return orderbook.result(sum(connection2secret.values()), connection2id)
 
 
-def handle_game_end(dummy):
-    time.sleep(DURATION_SECONDS)
+def handle_game_end(duration):
+    time.sleep(duration)
     global market_closed
     market_closed = True
     LOG.info(get_result())
-    """
-    for connection in connection2secret.keys():
-        connection.sendall(str.encode(result))
-        connection.close()
-    os._exit(1)
-    """
 
 
-def schedule_game_end():
-    _thread.start_new_thread(handle_game_end, (None,))
+def schedule_game_end(duration):
+    _thread.start_new_thread(handle_game_end, (duration,))
 
 
 if __name__ == "__main__":
     logging.basicConfig(filename=LOG_FILE, level=logging.INFO)
-    LOG.info("Starting Market Maker Game Server on {0}:{1}".format(HOST, PORT))
-    start_server(HOST, PORT)
+    setup_console_logging()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--host", help="Host name", default=HOST)
+    parser.add_argument("--port", help="Port", type=int, default=PORT)
+    parser.add_argument("--duration", help="Duration of the game (in seconds)", type=int, default=DURATION_SECONDS)
+    args = parser.parse_args()
+    LOG.info(f"Starting Market Maker Game Server on {args.host}:{args.port}, market open for {args.duration} seconds.")
+    start_server(args.host, args.port, args.duration)
