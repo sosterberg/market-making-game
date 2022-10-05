@@ -40,6 +40,7 @@ connection2bid = {}
 connection2ask = {}
 orderbook = ob.OrderBook()
 market_closed = False
+orderbook_is_dark = False
 
 
 def setup_console_logging():
@@ -128,6 +129,7 @@ def handle_instruction(connection, message):
 
 
 def client_handler(connection):
+    global orderbook_is_dark
     secret = random.randint(1, 10)
     connection.sendall(str.encode("You are now connected to the replay server, your secret is {0} ".format(secret)))
     connection2secret[connection] = secret
@@ -139,7 +141,7 @@ def client_handler(connection):
             true_price = sum(connection2secret.values())
             reply = MARKET_CLOSED_MSG + get_result()
         elif handle_status_request(message):
-            reply = str(orderbook) + orderbook.status(connection)
+            reply = orderbook.orders(is_dark=orderbook_is_dark) + orderbook.status(connection)
         elif handle_help_request(message):
             reply = HELP_MSG
         elif handle_off_request(message):
@@ -147,15 +149,15 @@ def client_handler(connection):
                 orderbook.cancel_order(connection, connection2bid[connection])
             if connection in connection2ask:
                 orderbook.cancel_order(connection, connection2ask[connection])
-            reply = str(orderbook) + orderbook.status(connection)
+            reply = orderbook.orders(is_dark=orderbook_is_dark) + orderbook.status(connection)
         elif handle_instruction(connection, message):
-            reply = str(orderbook) + orderbook.status(connection)
+            reply = orderbook.orders(is_dark=orderbook_is_dark) + orderbook.status(connection)
         else:
             quote = parse_quote(message)
             if quote:
                 bid_volume, bid, ask, ask_volume = quote
                 handle_quote(connection, bid_volume, bid, ask, ask_volume)
-                reply = str(orderbook) + orderbook.status(connection)
+                reply = orderbook.orders(is_dark=orderbook_is_dark) + orderbook.status(connection)
             else:
                 reply = "Faulty quote"
         connection.sendall(str.encode(reply))
@@ -203,6 +205,9 @@ if __name__ == "__main__":
     parser.add_argument("--host", help="Host name", default=HOST)
     parser.add_argument("--port", help="Port", type=int, default=PORT)
     parser.add_argument("--duration", help="Duration of the game (in seconds)", type=int, default=DURATION_SECONDS)
+    parser.add_argument("--orderbook-is-dark", help="Hide the orderbook from traders", action="store_true")
     args = parser.parse_args()
+    orderbook_is_dark = args.orderbook_is_dark
+    print(orderbook_is_dark)
     LOG.info(f"Starting Market Maker Game Server on {args.host}:{args.port}, market open for {args.duration} seconds.")
     start_server(args.host, args.port, args.duration)

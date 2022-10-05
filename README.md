@@ -26,6 +26,8 @@ For further details and default values: `python client.py --help`
 
 To run the *server* i.e. **market** with IP and PORT, open for a DURATION: `python client.py --host IP --port PORT --duration DURATION`.
 
+If the orderbook should be dark i.e. the orders are not visible to traders, specify flag `--orderbook-is-dark`  
+
 For further details and default values: `python server.py --help`
 
 

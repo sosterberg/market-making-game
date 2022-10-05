@@ -53,11 +53,13 @@ class OrderBook:
         self.asks = {}
         self.client2trades = {}
 
-    def __str__(self):
+    def orders(self, client=None, is_dark=True):
         bid_prices = sorted(self.bids.keys(), reverse=True)
         ask_prices = sorted(self.asks.keys())
         max_level = max(len(bid_prices), len(ask_prices))
         s = "--- ORDER BOOK ---\n"
+        if is_dark and client is None:
+            return s
         for level in range(max_level):
             if level < len(bid_prices):
                 bid_size = sum([o.size for o in self.bids[bid_prices[level]]])
