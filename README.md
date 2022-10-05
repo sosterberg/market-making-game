@@ -17,16 +17,16 @@ Not much to consider really (,i told you it was simple..). Running the server wo
 
 ## Running
 
-To run the *client* i.e. **trader** against a server with IP and PORT: <python client.py --host IP --port PORT>.
+To run the *client* i.e. **trader** against a server with IP and PORT: `python client.py --host IP --port PORT`.
 
-For further details and default values: <python client.py --help>
+For further details and default values: `python client.py --help`
 
 ---
 
 
-To run the *server* i.e. **market** with IP and PORT, open for a DURATION: <python client.py --host IP --port PORT --duration DURATION>.
+To run the *server* i.e. **market** with IP and PORT, open for a DURATION: `python client.py --host IP --port PORT --duration DURATION`.
 
-For further details and default values: <python server.py --help>
+For further details and default values: `python server.py --help`
 
 
 ## Instructions
@@ -62,5 +62,5 @@ Examples, assuming we have orders b@12,s@15 in the market:
 
 ### Other useful commands
 
-The orderbook does not update in realtime; to get a snapshot of the current state of the roderbook, the P/L, the current position and the historical trades, type <status>
+The orderbook does not update in realtime; to get a snapshot of the current state of the roderbook, the P/L, the current position and the historical trades, type `status`
 
