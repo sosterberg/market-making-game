@@ -62,5 +62,6 @@ Examples, assuming we have orders b@12,s@15 in the market:
 
 ### Other useful commands
 
-The orderbook does not update in realtime; to get a snapshot of the current state of the roderbook, the P/L, the current position and the historical trades, type `status`
+The orderbook does not update in realtime; to get a snapshot of the current state of the orderbook, the P/L, the current position and the historical trades, type `status`  
+To get help while in the game, type `help`
 
