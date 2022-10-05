@@ -32,33 +32,33 @@ For further details and default values: `python server.py --help`
 ## Instructions
 
 ### Placing orders
-Placing an order is done by specifying *\<b(uy)/s(ell)\>@<price>. A buy and a sell order can be simulataneously placed by separating the instruction with a comma. Whitepaces are trimmed.
+Placing an order is done by specifying `<b(uy)/s(ell)>@<price>`. A buy and a sell order can be simulataneously placed by separating the instruction with a comma. Whitepaces are trimmed.
 
 ---
 
 Examples:
 
-*buy @ 12* (equiv. to *b @ 12* and *b@12*)
-*sell @ 14* (equiv. to *s @ 14* and *s@14*)
-*buy @ 12, sell @ 14* (equiv. to b@12,s@14)
+* `buy @ 12` (equiv. to `b @ 12` and `b@12`)  
+* `sell @ 14` (equiv. to `s @ 14` and `s@14`)  
+* `buy @ 12, sell @ 14` (equiv. to `b@12,s@14`)  
 
 
 ### Updating orders
 Orders can be updated by the following commands:
-* up/u: move bid and ask price up
-* down/d: move bid and ask price down
-* in/i: move bid up and ask down
-* out/o: move bid down and ask up.
-* off: remove orders.
+* `up/u`: move bid and ask price up
+* `down/d`: move bid and ask price down
+* `in/i`: move bid up and ask down
+* `out/o`: move bid down and ask up.
+* `off`: remove orders.
 
 ---
 
 Examples, assuming we have orders b@12,s@15 in the market:
 
-* up -> b@13,s@16
-* down -> b@11,s@14
-* in -> b@13,s@14
-* out -> b@11,s@16
+* `up` -> b@13,s@16
+* `down` -> b@11,s@14
+* `in` -> b@13,s@14
+* `out` -> b@11,s@16
 
 ### Other useful commands
 
