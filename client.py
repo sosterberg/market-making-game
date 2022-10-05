@@ -40,7 +40,7 @@ def main(host, port):
 if __name__ == "__main__":
     logging.basicConfig(filename=LOG_FILE, level=logging.INFO)
     setup_console_logging()
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--host", help="Host name", default=HOST)
     parser.add_argument("--port", help="Port", type=int, default=PORT)
     args = parser.parse_args()
