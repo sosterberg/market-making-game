@@ -3,7 +3,6 @@ import argparse
 import _thread
 import logging
 import random
-import re
 import orderbook as ob
 import time
 import sys
@@ -15,7 +14,6 @@ CONSOLE_FORMATTER_PATTERN = "%(message)s'"
 HOST = "127.0.0.1"
 PORT = 1234
 DURATION_SECONDS = 60
-QUOTE_PATTERN = re.compile("([0-9]*)\@([0-9]*)\|([0-9]*)\@([0-9]*)")
 MARKET_CLOSED_MSG = "Sorry, the market has closed\n"
 HELP_MSG = """
 --- MARKET MAKING GAME ---
@@ -41,6 +39,7 @@ connection2ask = {}
 orderbook = ob.OrderBook()
 market_closed = False
 orderbook_is_dark = False
+clients = []
 
 
 def setup_console_logging():
@@ -75,30 +74,37 @@ def parse_quote(quote):
     ask_volume = 1
     bid = None
     ask = None
+    quote_valid = False
     for q in quotes:
         side_and_price = q.split("@")
         if len(side_and_price) == 2:
             side, price = side_and_price
             if side.strip().lower() in ["b", "buy"] and price.strip().isnumeric():
                 bid = int(price)
+                quote_valid = True
             elif side.strip().lower() in ["s", "sell"] and price.strip().isnumeric():
                 ask = int(price)
-        else:
-            LOG.error("Invalid quote: expected <b(uy)/s(ell)>@<price>, e.g. b@12, sell@14")
+                quote_valid = True
+            elif side.strip().lower() in ["q", "quote"]:
+                bid_and_ask = price.split("/")
+                if len(bid_and_ask) == 2:
+                    bid_in, ask_in = bid_and_ask
+                    if bid_in.strip().isnumeric() and ask_in.strip().isnumeric():
+                        bid = int(bid_in)
+                        ask = int(ask_in)
+                        quote_valid = True
+        if not quote_valid:
+            LOG.error(f"Client sent invalid quote {quote}")
             return None
 
     return bid_volume, bid, ask, ask_volume
 
 
-def handle_status_request(message):
-    return message.lower() in ["status", "s"]
-
-
-def handle_help_request(message):
+def is_help_request(message):
     return message.lower() in ["help", "h"]
 
 
-def handle_off_request(message):
+def is_off_request(message):
     return message.lower() in ["off"]
 
 
@@ -138,34 +144,37 @@ def client_handler(connection):
         data = connection.recv(2048)
         message = data.decode("utf-8")
         if market_closed:
-            true_price = sum(connection2secret.values())
             reply = MARKET_CLOSED_MSG + get_result()
-        elif handle_status_request(message):
-            reply = orderbook.orders(is_dark=orderbook_is_dark) + orderbook.status(connection)
-        elif handle_help_request(message):
+        elif is_help_request(message):
             reply = HELP_MSG
-        elif handle_off_request(message):
+        elif is_off_request(message):
             if connection in connection2bid:
                 orderbook.cancel_order(connection, connection2bid[connection])
             if connection in connection2ask:
                 orderbook.cancel_order(connection, connection2ask[connection])
-            reply = orderbook.orders(is_dark=orderbook_is_dark) + orderbook.status(connection)
+            reply = ""
         elif handle_instruction(connection, message):
-            reply = orderbook.orders(is_dark=orderbook_is_dark) + orderbook.status(connection)
+            reply = ""
         else:
             quote = parse_quote(message)
             if quote:
                 bid_volume, bid, ask, ask_volume = quote
                 handle_quote(connection, bid_volume, bid, ask, ask_volume)
-                reply = orderbook.orders(is_dark=orderbook_is_dark) + orderbook.status(connection)
+                for client in clients:
+                    orderbook_status = orderbook.orders(is_dark=orderbook_is_dark) + orderbook.status(client)
+                    client.sendall(str.encode(orderbook_status))
+                reply = ""
             else:
-                reply = "Faulty quote"
+                reply = "Invalid quote: expected <b(uy)/s(ell)>@<price>, e.g. b@12, sell@14"
+
+        reply = orderbook.orders(is_dark=orderbook_is_dark) + orderbook.status(connection) + reply
         connection.sendall(str.encode(reply))
 
 
 def accept_connections(server_socket):
     client, address = server_socket.accept()
-    _thread.start_new_thread(client_handler, (client, ))
+    clients.append(client)
+    _thread.start_new_thread(client_handler, (client,))
 
 
 def start_server(host, port, duration):
@@ -192,6 +201,8 @@ def handle_game_end(duration):
     global market_closed
     market_closed = True
     LOG.info(get_result())
+    for client in clients:
+        client.sendall("ENDGAME")
 
 
 def schedule_game_end(duration):
@@ -210,4 +221,7 @@ if __name__ == "__main__":
     orderbook_is_dark = args.orderbook_is_dark
     print(orderbook_is_dark)
     LOG.info(f"Starting Market Maker Game Server on {args.host}:{args.port}, market open for {args.duration} seconds.")
-    start_server(args.host, args.port, args.duration)
+
+    _thread.start_new_thread(start_server, (args.host, args.port, args.duration))
+    while True:
+        command = input("")
