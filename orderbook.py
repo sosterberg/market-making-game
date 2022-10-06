@@ -87,7 +87,7 @@ class OrderBook:
         return s
 
     def add_order(self, client_id, is_bid, size, price):
-        """ Add an order to the order bool.
+        """ Add an order to the order book.
 
         Returns order_id upon success, otherwise None
         """

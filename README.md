@@ -34,7 +34,7 @@ For further details and default values: `python server.py --help`
 ## Instructions
 
 ### Placing orders
-Placing an order is done by specifying `<b(uy)/s(ell)>@<price>`. A buy and a sell order can be simulataneously placed by separating the instruction with a comma. Whitepaces are trimmed.
+Placing an order is done by specifying `<b(uy)/s(ell)>@<price>`. A buy and a sell order can be simultaneously placed by separating the instruction with a comma. Whitespaces are trimmed.
 
 ---
 
