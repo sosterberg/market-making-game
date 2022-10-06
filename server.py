@@ -225,7 +225,7 @@ def handle_game_end(duration):
     market_closed = True
     LOG.info(get_result())
     for client in clients:
-        send_to_client(client, "ENDGAME")
+        send_to_client(client, get_result())
 
 
 def schedule_game_end(duration):
