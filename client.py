@@ -89,13 +89,15 @@ def main(host, port):
             client_socket.send(str.encode(user_input))
             user_input = ""
         else:
-            decoded_char = input_char.decode('utf-8')
-
-            if decoded_char.isalnum() or decoded_char in ['@', '/']:
-                user_input = user_input + decoded_char
-            elif input_char == b'\x08':
-                user_input = user_input[:-1]
-            show_user_input()
+            try:
+                decoded_char = input_char.decode('utf-8')
+                if decoded_char.isalnum() or decoded_char in ['@', '/']:
+                    user_input = user_input + decoded_char
+                elif input_char == b'\x08':
+                    user_input = user_input[:-1]
+                show_user_input()
+            except UnicodeDecodeError as e:
+                pass
 
     client_socket.close()
 
