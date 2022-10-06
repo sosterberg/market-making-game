@@ -10,7 +10,7 @@ import sys
 
 LOG = logging.getLogger(__name__)
 LOG_FILE = "market-making-game-server.log"
-CONSOLE_FORMATTER_PATTERN = "%(message)s'"
+CONSOLE_FORMATTER_PATTERN = "%(message)s"
 HOST = "127.0.0.1"
 PORT = 1234
 DURATION_SECONDS = 60
@@ -40,6 +40,7 @@ orderbook = ob.OrderBook()
 market_closed = False
 orderbook_is_dark = False
 clients = []
+game_started = False
 
 
 def setup_console_logging():
@@ -134,15 +135,22 @@ def handle_instruction(connection, message):
     return True
 
 
+def send_to_client(client, message):
+    client.sendall(str.encode(message))
+
+
 def client_handler(connection):
     global orderbook_is_dark
-    secret = random.randint(1, 10)
-    connection.sendall(str.encode("You are now connected to the replay server, your secret is {0} ".format(secret)))
-    connection2secret[connection] = secret
-    connection2id[connection] = len(connection2id) + 1
+    global game_started
+
     while True:
         data = connection.recv(2048)
         message = data.decode("utf-8")
+
+        if not game_started:
+            send_to_client(connection, "Game has not started yet")
+            continue
+
         if market_closed:
             reply = MARKET_CLOSED_MSG + get_result()
         elif is_help_request(message):
@@ -162,22 +170,38 @@ def client_handler(connection):
                 handle_quote(connection, bid_volume, bid, ask, ask_volume)
                 for client in clients:
                     orderbook_status = orderbook.orders(is_dark=orderbook_is_dark) + orderbook.status(client)
-                    client.sendall(str.encode(orderbook_status))
+                    send_to_client(client, orderbook_status)
                 reply = ""
             else:
                 reply = "Invalid quote: expected <b(uy)/s(ell)>@<price>, e.g. b@12, sell@14"
 
         reply = orderbook.orders(is_dark=orderbook_is_dark) + orderbook.status(connection) + reply
-        connection.sendall(str.encode(reply))
+        send_to_client(connection, reply)
 
 
 def accept_connections(server_socket):
+    global game_started
+    global connection2secret
+    global connection2id
     client, address = server_socket.accept()
+    if game_started:
+        LOG.info("GAME IS STARTED. NOT ACCEPTING CONNECTION")
+        send_to_client(client, "REJECT")
+        client.close()
+        return
     clients.append(client)
+    LOG.info(f"Client connected. Number of clients is now {len(clients)}")
+
+    secret = random.randint(1, 10)
+    connection2secret[client] = secret
+    connection2id[client] = len(connection2id) + 1
+
+    send_to_client(client, f"You are now connected to the replay server, your secret is {secret}. Game will begin shortly")
     _thread.start_new_thread(client_handler, (client,))
 
 
-def start_server(host, port, duration):
+def start_server(host, port):
+    global game_started
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         server_socket.bind((host, port))
@@ -186,8 +210,7 @@ def start_server(host, port, duration):
     server_socket.listen()
     LOG.info("Listening for connections...")
 
-    schedule_game_end(duration)
-    while True:
+    while not game_started:
         accept_connections(server_socket)
 
 
@@ -202,7 +225,7 @@ def handle_game_end(duration):
     market_closed = True
     LOG.info(get_result())
     for client in clients:
-        client.sendall("ENDGAME")
+        send_to_client(client, "ENDGAME")
 
 
 def schedule_game_end(duration):
@@ -219,9 +242,17 @@ if __name__ == "__main__":
     parser.add_argument("--orderbook-is-dark", help="Hide the orderbook from traders", action="store_true")
     args = parser.parse_args()
     orderbook_is_dark = args.orderbook_is_dark
-    print(orderbook_is_dark)
+    print(f"Order book is{' not' if orderbook_is_dark else ''} dark")
     LOG.info(f"Starting Market Maker Game Server on {args.host}:{args.port}, market open for {args.duration} seconds.")
+    LOG.info("Type 'start' to start the game")
 
-    _thread.start_new_thread(start_server, (args.host, args.port, args.duration))
+    _thread.start_new_thread(start_server, (args.host, args.port))
     while True:
         command = input("")
+        if command == "start":
+            game_started = True
+            LOG.info("Game is now started")
+            for receiver in clients:
+                send_to_client(receiver, f"The game has begun")
+            LOG.info(f"Fair price is {sum(connection2secret.values())}")
+            schedule_game_end(args.duration)
