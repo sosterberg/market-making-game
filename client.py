@@ -4,12 +4,47 @@ import logging
 import argparse
 import sys
 import os
+import msvcrt
+
 
 LOG = logging.getLogger(__name__)
 LOG_FILE = "market-making-game-client.log"
 HOST = "127.0.0.1"
 PORT = 1234
-CONSOLE_FORMATTER_PATTERN = "%(message)s'"
+CONSOLE_FORMATTER_PATTERN = "%(message)s"
+user_input = ""
+latest_output = ""
+
+
+def error_log(msg):
+    global latest_output
+    global user_input
+    latest_output = msg
+
+    msg = msg + '\n\n\n' + user_input
+
+    os.system('cls -x || clear -x')
+    LOG.error(msg)
+
+
+def info_log(msg):
+    global latest_output
+    global user_input
+    latest_output = msg
+
+    msg = msg + '\n\n\n' + user_input
+
+    os.system('cls -x || clear -x')
+    LOG.info(msg)
+
+
+def show_user_input():
+    global latest_output
+    global user_input
+
+    text = latest_output + '\n\n\n' + user_input
+    os.system('cls -x || clear -x')
+    LOG.info(text)
 
 
 def setup_console_logging():
@@ -23,25 +58,45 @@ def setup_console_logging():
 def listener_thread(client_socket):
     while True:
         response = client_socket.recv(2048)
-        os.system('cls||clear')
-        LOG.info(response.decode("utf-8"))
+        message = response.decode("utf-8")
+
+        if message == "REJECT":
+            error_log("Server rejected connection")
+            os._exit(1)
+
+        if not message == "":
+            info_log(message)
 
 
 def main(host, port):
+    global user_input
     client_socket = socket.socket()
-    LOG.info("Waiting for connections")
+    info_log("Connecting to server")
     try:
         client_socket.connect((host, port))
     except socket.error as e:
-        LOG.error(str(e))
+        error_log(str(e))
+        return
 
     _thread.start_new_thread(listener_thread, (client_socket, ))
 
+    user_input = ""
     while True:
-        input_string = input("Your quote: ")
-        if not input_string:
-            continue
-        client_socket.send(str.encode(input_string))
+        input_char = msvcrt.getch()
+        if input_char == b'\r' or input_char == b'\n':
+            if not user_input:
+                continue
+            client_socket.send(str.encode(user_input))
+            user_input = ""
+        else:
+            decoded_char = input_char.decode('utf-8')
+
+            if decoded_char.isalnum() or decoded_char in ['@', '/']:
+                user_input = user_input + decoded_char
+            elif input_char == b'\x08':
+                user_input = user_input[:-1]
+            show_user_input()
+
     client_socket.close()
 
 
