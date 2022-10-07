@@ -20,8 +20,7 @@ HELP_MSG = """
 Every participant gets a secret number between 1 and 10 (inclusive).
 The goal is to trade the security *sum of the secrets*.
 
-To quote, use the following format <bid volume>@<bid price>|<ask price>@<ask volume>, e.g. 10@20|30@40 would quote
-10 units at 20 bid and 40 units at 30 offered.
+To quote, use the following format "b20" to buy at 20, "s10" to sell at 10, "q10/20" to buy at 10 and sell at 20
 
 Shortcuts
 help: See this message again. 
@@ -77,23 +76,25 @@ def parse_quote(quote):
     ask = None
     quote_valid = False
     for q in quotes:
-        side_and_price = q.split("@")
-        if len(side_and_price) == 2:
-            side, price = side_and_price
-            if side.strip().lower() in ["b", "buy"] and price.strip().isnumeric():
-                bid = int(price)
-                quote_valid = True
-            elif side.strip().lower() in ["s", "sell"] and price.strip().isnumeric():
-                ask = int(price)
-                quote_valid = True
-            elif side.strip().lower() in ["q", "quote"]:
-                bid_and_ask = price.split("/")
-                if len(bid_and_ask) == 2:
-                    bid_in, ask_in = bid_and_ask
-                    if bid_in.strip().isnumeric() and ask_in.strip().isnumeric():
-                        bid = int(bid_in)
-                        ask = int(ask_in)
-                        quote_valid = True
+        q = q.strip()
+        if q[0] == 'b' or q[0] == 's':
+            price = q[1:]
+            if price.strip().isnumeric():
+                if q[0] == 'b':
+                    bid = int(price)
+                    quote_valid = True
+                else:
+                    ask = int(price)
+                    quote_valid = True
+        elif q[0] == 'q':
+            prices = q[1:].split("/")
+            if len(prices) == 2:
+                q_bid, q_ask = prices
+                if q_bid.strip().isnumeric() and q_ask.strip().isnumeric():
+                    bid = int(q_bid)
+                    ask = int(q_ask)
+                    quote_valid = True
+
         if not quote_valid:
             LOG.error(f"Client sent invalid quote {quote}")
             return None
@@ -136,7 +137,8 @@ def handle_instruction(connection, message):
 
 
 def send_to_client(client, message):
-    client.sendall(str.encode(message))
+    info_message = f"You are client {connection2id[client]} and your secret is {connection2secret[client]}\n"
+    client.sendall(str.encode(info_message + message))
 
 
 def client_handler(connection):
@@ -152,7 +154,7 @@ def client_handler(connection):
             continue
 
         if market_closed:
-            reply = MARKET_CLOSED_MSG + get_result()
+            reply = MARKET_CLOSED_MSG + orderbook.orders(is_dark=orderbook_is_dark) + orderbook.status(connection) + get_result()
         elif is_help_request(message):
             reply = HELP_MSG
         elif is_off_request(message):
@@ -225,7 +227,7 @@ def handle_game_end(duration):
     market_closed = True
     LOG.info(get_result())
     for client in clients:
-        send_to_client(client, get_result())
+        send_to_client(client, orderbook.orders(is_dark=orderbook_is_dark) + orderbook.status(client) + get_result())
 
 
 def schedule_game_end(duration):
@@ -242,7 +244,7 @@ if __name__ == "__main__":
     parser.add_argument("--orderbook-is-dark", help="Hide the orderbook from traders", action="store_true")
     args = parser.parse_args()
     orderbook_is_dark = args.orderbook_is_dark
-    print(f"Order book is{' not' if orderbook_is_dark else ''} dark")
+    print(f"Order book is{' not' if not orderbook_is_dark else ''} dark")
     LOG.info(f"Starting Market Maker Game Server on {args.host}:{args.port}, market open for {args.duration} seconds.")
     LOG.info("Type 'start' to start the game")
 

@@ -64,6 +64,8 @@ class OrderBook:
             if level < len(bid_prices):
                 bid_size = sum([o.size for o in self.bids[bid_prices[level]]])
                 s += "{0:5} @ {1:5}".format(bid_size, bid_prices[level])
+            else:
+                s += "             "
             s += " | "
             if level < len(ask_prices):
                 ask_size = sum([o.size for o in self.asks[ask_prices[level]]])
