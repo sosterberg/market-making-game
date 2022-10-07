@@ -34,15 +34,15 @@ def realized_pnl(trades):
 
 
 def account_string(trades):
-    s = "--- ACCOUNT ---\n"
-    s += "pos = {0}\npnl = {1}\n".format(position(trades), realized_pnl(trades))
+    s = "--- ACCOUNT ---\n\r"
+    s += "pos = {0}\n\rpnl = {1}\n\r".format(position(trades), realized_pnl(trades))
     return s
 
 
 def trades_string(trades):
-    s = "--- TRADES ---\n"
+    s = "--- TRADES ---\n\r"
     for t in trades:
-        s += "{0} {1} @ {2}\n".format("Buy" if t.is_buy else "Sell", t.size, t.price)
+        s += "{0} {1} @ {2}\n\r".format("Buy" if t.is_buy else "Sell", t.size, t.price)
     return s
 
 
@@ -57,7 +57,7 @@ class OrderBook:
         bid_prices = sorted(self.bids.keys(), reverse=True)
         ask_prices = sorted(self.asks.keys())
         max_level = max(len(bid_prices), len(ask_prices))
-        s = "--- ORDER BOOK ---\n"
+        s = "--- ORDER BOOK ---\n\r"
         if is_dark and client is None:
             return s
         for level in range(max_level):
@@ -70,7 +70,7 @@ class OrderBook:
             if level < len(ask_prices):
                 ask_size = sum([o.size for o in self.asks[ask_prices[level]]])
                 s += "{0:<5} @ {1:<5}".format(ask_prices[level], ask_size)
-            s += "\n"
+            s += "\n\r"
         return s
 
     def status(self, client):
@@ -78,14 +78,14 @@ class OrderBook:
         return account_string(trades) + trades_string(trades)
 
     def result(self, true_price, client2id):
-        s = "--- RESULT ---\n"
+        s = "--- RESULT ---\n\r"
         for client, id in client2id.items():
             trades = self.client2trades.get(client, [])
             pos = sum([t.size if t.is_buy else -t.size for t in trades])
             if pos != 0:
                 trades.append(Trade(pos < 0, abs(pos), true_price))
             pnl = realized_pnl(trades)
-            s += f"P/L for client {client2id[client]}: {pnl}\n"
+            s += f"P/L for client {client2id[client]}: {pnl}\n\r"
         return s
 
     def add_order(self, client_id, is_bid, size, price):
