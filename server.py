@@ -14,7 +14,7 @@ CONSOLE_FORMATTER_PATTERN = "%(message)s"
 HOST = "127.0.0.1"
 PORT = 1234
 DURATION_SECONDS = 60
-MARKET_CLOSED_MSG = "Sorry, the market has closed\n"
+MARKET_CLOSED_MSG = "Sorry, the market has closed\n\r"
 HELP_MSG = """
 --- MARKET MAKING GAME ---
 Every participant gets a secret number between 1 and 10 (inclusive).
@@ -137,7 +137,7 @@ def handle_instruction(connection, message):
 
 
 def send_to_client(client, message):
-    info_message = f"You are client {connection2id[client]} and your secret is {connection2secret[client]}\n"
+    info_message = f"You are client {connection2id[client]} and your secret is {connection2secret[client]}\n\r"
     client.sendall(str.encode(info_message + message))
 
 
@@ -156,7 +156,7 @@ def client_handler(connection):
         if market_closed:
             reply = MARKET_CLOSED_MSG + orderbook.orders(is_dark=orderbook_is_dark) + orderbook.status(connection) + get_result()
         elif is_help_request(message):
-            reply = HELP_MSG
+            reply = HELP_MSG.replace("\n", "\n\r")
         elif is_off_request(message):
             if connection in connection2bid:
                 orderbook.cancel_order(connection, connection2bid[connection])
