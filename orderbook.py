@@ -88,6 +88,8 @@ class OrderBook:
                 trades.append(Trade(pos < 0, abs(pos), true_price))
             pnl = realized_pnl(trades)
             s += f"P/L for client {client2id[client]}: {pnl}\n\r"
+        s += "\n\r"
+        s += f"Fair price for the instrument was {true_price}\n\r"
         return s
 
     def add_order(self, client_id, is_bid, size, price):

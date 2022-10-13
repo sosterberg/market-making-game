@@ -57,9 +57,10 @@ class Gui:
         self.connection = in_connection
 
     def send_to_server(self, _):
-        entered_command = self.input_box.get()
+        if self.connection is not None:
+            entered_command = self.input_box.get()
+            self.connection.send(str.encode(entered_command))
         self.input_box.delete(0, "end")
-        self.connection.send(str.encode(entered_command))
 
     def exit(self):
         self.root.destroy()
@@ -91,24 +92,44 @@ def info_log(msg):
 
 def listener_thread(client_socket):
     global gui
+    global connection
 
+    connected = True
     while True:
-        response = client_socket.recv(2048)
-        message = response.decode("utf-8")
+        try:
+            response = client_socket.recv(2048)
+            connected = True
+            message = response.decode("utf-8")
 
-        if message.strip() == "REJECT":
-            error_log("Server rejected connection")
-            gui.exit()
+            if message.strip() == "REJECT":
+                error_log("Server rejected connection")
+                gui.exit()
 
-        if not message == "":
-            info_log(message)
-            gui.set_output(message)
+            if not message == "":
+                info_log(message)
+                gui.set_output(message)
+        except (ConnectionResetError, OSError):
+            info_log("Trying to reconnect")
+            if connected:
+                gui.set_output("Lost connection to server. Trying to reconnect")
+            connected = False
+            gui.set_connection(None)
+            try:
+                client_socket.close()
+                client_socket = socket.socket()
+                client_socket.connect((HOST, PORT))
+                gui.set_connection(client_socket)
+            except ConnectionRefusedError:
+                pass
 
 
 def connect_to_server(host, port):
+    global gui
+
     client_socket = socket.socket()
     try:
         client_socket.connect((host, port))
+        gui.set_connection(client_socket)
         _thread.start_new_thread(listener_thread, (client_socket,))
         return client_socket
     except socket.error as e:
@@ -124,8 +145,8 @@ if __name__ == '__main__':
     parser.add_argument("--port", help="Port", type=int, default=PORT)
     args = parser.parse_args()
 
-    connection = connect_to_server(args.host, args.port)
+    HOST = args.host
+    PORT = args.port
 
-    if connection is not False:
-        gui.set_connection(connection)
-        gui.start()
+    connect_to_server(args.host, args.port)
+    gui.start()

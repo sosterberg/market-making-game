@@ -34,7 +34,7 @@ def is_help_request(message):
 def client_handler(connection):
     global game
 
-    client_communicator.send_to_clients(connection, "You are connected to the server. Wait for a game to start.")
+    client_communicator.send_to_clients(connection, f"You are connected to the server. {'Wait for a game to start.' if not game.is_started() else 'There is an ongoing game, you will get to join the next one.'}")
 
     while True:
         try:
@@ -92,10 +92,13 @@ if __name__ == "__main__":
     parser.add_argument("--orderbook-is-dark", help="Hide the orderbook from traders", action="store_true")
     args = parser.parse_args()
 
+    info_log("Type 'start' to start a new game when all clients have connected")
+
     _thread.start_new_thread(accept_connecting_clients, (args.host, args.port))
     while True:
         command = input("")
         if command == "start":
+            info_log(f"Starting game with {len(connected_clients)} clients")
             game.start(connected_clients, args.duration, args.orderbook_is_dark)
             client_communicator.send_to_clients(connected_clients, "A new game has started")
         elif command == "stop":
