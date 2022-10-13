@@ -24,46 +24,16 @@ For further details and default values: `python client.py --help`
 ---
 
 
-To run the *server* i.e. **market** with IP and PORT, open for a DURATION: `python client.py --host IP --port PORT --duration DURATION`.
+To run the *server* i.e. **market** with IP and PORT, open for a DURATION: `python server.py --host IP --port PORT --duration DURATION`.
 
 If the orderbook should be dark i.e. the orders are not visible to traders, specify flag `--orderbook-is-dark`  
+
+Type "start" in the server to start a new game.
 
 For further details and default values: `python server.py --help`
 
 
 ## Instructions
 
-### Placing orders
-Placing an order is done by specifying `<b(uy)/s(ell)>@<price>`. A buy and a sell order can be simultaneously placed by separating the instruction with a comma. Whitespaces are trimmed.
-
----
-
-Examples:
-
-* `buy @ 12` (equiv. to `b @ 12` and `b@12`)  
-* `sell @ 14` (equiv. to `s @ 14` and `s@14`)  
-* `buy @ 12, sell @ 14` (equiv. to `b@12,s@14`)  
-
-
-### Updating orders
-Orders can be updated by the following commands:
-* `up/u`: move bid and ask price up
-* `down/d`: move bid and ask price down
-* `in/i`: move bid up and ask down
-* `out/o`: move bid down and ask up.
-* `off`: remove orders.
-
----
-
-Examples, assuming we have orders b@12,s@15 in the market:
-
-* `up` -> b@13,s@16
-* `down` -> b@11,s@14
-* `in` -> b@13,s@14
-* `out` -> b@11,s@16
-
-### Other useful commands
-
-The orderbook does not update in realtime; to get a snapshot of the current state of the orderbook, the P/L, the current position and the historical trades, type `status`  
-To get help while in the game, type `help`
+Press the 'help' button in the client to get help.
 

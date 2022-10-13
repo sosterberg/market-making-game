@@ -1,7 +1,6 @@
 import random
 import threading
 from orderbook import OrderBook
-import client_communication_tool
 
 
 class Game:
@@ -20,12 +19,16 @@ class Game:
         if not self.started:
             self.started = True
             self.client_to_secret.clear()
+            self.client_communicator.clear_persistent_information()
+            self.client_to_id.clear()
 
-            self.clients = clients
+            self.clients = clients.copy()
             client_id = 1
             for client in self.clients:
-                self.client_to_secret[client] = random.randint(1, 10)
+                secret = random.randint(1, 10)
+                self.client_to_secret[client] = secret
                 self.client_to_id[client] = client_id
+                self.client_communicator.add_persistent_information(client, f"You are client {client_id} and your secret is {secret}")
                 client_id += 1
             self.fair_price = sum(self.client_to_secret.values())
             self.market_open = True
@@ -61,8 +64,13 @@ class Game:
 
     def end_game(self):
         self.started = False
-        self.client_communicator.add_persistent_information(self.clients, self.orderbook.result(self.fair_price, self.client_to_id))
-        self.client_communicator.send_to_clients(self.clients, "Game is over!")
+        for client in self.clients:
+            self.client_communicator.send_to_clients(
+                client,
+                self.orderbook.orders(is_dark=self.orderbook_is_dark)
+                + self.orderbook.status(client)
+                + self.orderbook.result(self.fair_price, self.client_to_id)
+            )
 
     def schedule_game_end(self, duration):
         threading.Timer(duration, self.end_game).start()

@@ -16,6 +16,9 @@ class ClientCommunicator:
                     message = f"{self.persistent_information[client]}\n\r{message}"
                 self.persistent_information[client] = message
 
+    def clear_persistent_information(self):
+        self.persistent_information.clear()
+
     def send_to_clients(self, clients, message):
         clients = to_iterable(clients)
         if message:
@@ -23,4 +26,7 @@ class ClientCommunicator:
                 client_message = message
                 if client in self.persistent_information:
                     client_message = f"{self.persistent_information[client]}\n\r{message}"
-                client.sendall(str.encode(client_message))
+                try:
+                    client.sendall(str.encode(client_message))
+                except ConnectionResetError:
+                    pass
