@@ -52,6 +52,8 @@ class OrderBook:
         self.bids = {}
         self.asks = {}
         self.client2trades = {}
+        self.client2bid = {}
+        self.client2ask = {}
 
     def orders(self, client=None, is_dark=True):
         bid_prices = sorted(self.bids.keys(), reverse=True)

@@ -1,50 +1,76 @@
 import _thread
-import socket
-import logging
 import argparse
-import sys
-import os
-import msvcrt
+import logging
+import socket
+from tkinter import *
+from tkinter import ttk
+from tkinter import messagebox
+
+
+HELP_MSG = """
+--- MARKET MAKING GAME ---
+This is a game where participants trade an instrument.
+
+Each participant will receive a secret number between 1 and 10 (inclusive).
+
+The true value of the instrument is the sum of all the participant secrets.
+
+Trading is done by "market making". I.e. by telling the market (the other participants) what price you are willing to buy/sell the instrument for.
+
+If you want to buy the instrument for the price "20", type "b20" in the command box and press enter.
+
+If you want to sell the instrument for the price "30", type "s30" in the command box and press enter.
+
+Good luck!
+"""
+
+
+def show_help():
+    messagebox.showinfo("Help", HELP_MSG)
+
+
+class Gui:
+    def __init__(self):
+        self.root = Tk()
+        self.frm = ttk.Frame(self.root, padding=10)
+        self.frm.grid()
+
+        self.connection = None
+
+        self.output_box = Text(self.frm, wrap="none", width=100)
+        self.output_box.grid(row=0, columnspan=24)
+
+        self.input_box = Entry(self.frm, width=100)
+        self.input_box.grid(row=1, column=0)
+        self.input_box.bind("<Return>", self.send_to_server)
+
+        Button(self.frm, command=show_help, text="Help").grid(row=1, column=1)
+
+    def start(self):
+        self.root.mainloop()
+
+    def set_output(self, message):
+        self.output_box.delete(1.0, "end")
+        self.output_box.insert("end", message)
+
+    def set_connection(self, in_connection):
+        self.connection = in_connection
+
+    def send_to_server(self, _):
+        entered_command = self.input_box.get()
+        self.input_box.delete(0, "end")
+        self.connection.send(str.encode(entered_command))
+
+    def exit(self):
+        self.root.destroy()
 
 
 LOG = logging.getLogger(__name__)
 LOG_FILE = "market-making-game-client.log"
+CONSOLE_FORMATTER_PATTERN = "%(message)s"
 HOST = "127.0.0.1"
 PORT = 1234
-CONSOLE_FORMATTER_PATTERN = "%(message)s"
-user_input = ""
-latest_output = ""
-
-
-def error_log(msg):
-    global latest_output
-    global user_input
-    latest_output = msg
-
-    msg = msg + '\n\n\n' + user_input
-
-    os.system('cls -x || clear -x')
-    LOG.error(msg)
-
-
-def info_log(msg):
-    global latest_output
-    global user_input
-    latest_output = msg
-
-    msg = msg + '\n\n\n' + user_input
-
-    os.system('cls -x || clear -x')
-    LOG.info(msg)
-
-
-def show_user_input():
-    global latest_output
-    global user_input
-
-    text = latest_output + '\n\n\n' + user_input
-    os.system('cls -x || clear -x')
-    LOG.info(text)
+gui = Gui()
 
 
 def setup_console_logging():
@@ -55,58 +81,51 @@ def setup_console_logging():
     LOG.addHandler(console)
 
 
+def error_log(msg):
+    LOG.error(str(msg))
+
+
+def info_log(msg):
+    LOG.info(str(msg))
+
+
 def listener_thread(client_socket):
+    global gui
+
     while True:
         response = client_socket.recv(2048)
         message = response.decode("utf-8")
 
-        if message == "REJECT":
+        if message.strip() == "REJECT":
             error_log("Server rejected connection")
-            os._exit(1)
+            gui.exit()
 
         if not message == "":
             info_log(message)
+            gui.set_output(message)
 
 
-def main(host, port):
-    global user_input
+def connect_to_server(host, port):
     client_socket = socket.socket()
-    info_log("Connecting to server")
     try:
         client_socket.connect((host, port))
+        _thread.start_new_thread(listener_thread, (client_socket,))
+        return client_socket
     except socket.error as e:
-        error_log(str(e))
-        return
-
-    _thread.start_new_thread(listener_thread, (client_socket, ))
-
-    user_input = ""
-    while True:
-        input_char = msvcrt.getch()
-        if input_char == b'\r' or input_char == b'\n':
-            if not user_input:
-                continue
-            client_socket.send(str.encode(user_input))
-            user_input = ""
-        else:
-            try:
-                decoded_char = input_char.decode('utf-8')
-                if decoded_char.isalnum() or decoded_char in ['@', '/']:
-                    user_input = user_input + decoded_char
-                elif input_char == b'\x08':
-                    user_input = user_input[:-1]
-                show_user_input()
-            except UnicodeDecodeError as e:
-                pass
-
-    client_socket.close()
+        error_log(e)
+        return False
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     logging.basicConfig(filename=LOG_FILE, level=logging.INFO)
     setup_console_logging()
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--host", help="Host name", default=HOST)
     parser.add_argument("--port", help="Port", type=int, default=PORT)
     args = parser.parse_args()
-    main(args.host, args.port)
+
+    connection = connect_to_server(args.host, args.port)
+
+    if connection is not False:
+        gui.set_connection(connection)
+        gui.start()
