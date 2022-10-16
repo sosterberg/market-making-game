@@ -64,7 +64,7 @@ def accept_client(server_socket):
 def accept_connecting_clients(host, port):
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-        server_socket.bind((host, port))
+        server_socket.bind(("", port))
     except socket.error as e:
         LOG.error(str(e))
     server_socket.listen()
