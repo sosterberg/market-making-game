@@ -60,7 +60,6 @@ class Game:
                     orderbook_status = self.orderbook.orders(is_dark=self.orderbook_is_dark) + self.orderbook.status(client)
                     messages.append((client, orderbook_status))
                 return messages
-            return [(client, "You are part of the game, congratz")]
 
     def end_game(self):
         self.started = False
